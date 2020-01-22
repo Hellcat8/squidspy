@@ -86,6 +86,11 @@ namespace squidspy.Core
                 level = node.SelectSingleNode(".//div/tr/td/table/tr/td/div[3]")?.InnerText;
             }
 
+            if (String.IsNullOrEmpty(level))
+            {
+                level = node.SelectSingleNode(".//div/tr/td/table/tr/td/div[last()]")?.InnerText;
+            }
+
             return level;
         }
 
