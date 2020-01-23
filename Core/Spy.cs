@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.IO;
 using HtmlAgilityPack;
-using squidspy.DofusItem;
+using System.Net;
 
 namespace squidspy.Core
 {
     public class Spy
     {
-        #region Common
         public Spy() {}
 
         private HtmlDocument OpenHtmlFromFile(string path)
@@ -18,13 +17,11 @@ namespace squidspy.Core
 
             return doc;
         }
-        #endregion
 
-        #region Ressources
-        public void ImportRessources(string path)
+        public void ImportItem(string path, string item_type)
         {
             Logger logger = new Logger();
-            logger.StartLogging("Ressources");
+            logger.StartLogging(item_type);
             int success_count = 0;
             int total_count = 0;
 
@@ -33,39 +30,40 @@ namespace squidspy.Core
                 foreach (string file in Directory.GetFiles(dir, "*.html"))
                 {
                     HtmlDocument doc = this.OpenHtmlFromFile(file);
-                    HtmlNodeCollection DataNodes = this.SelectRessourceDataNodes(doc);
+                    HtmlNodeCollection DataNodes = this.SelectItemDataNodes(doc);
 
                     foreach (HtmlNode node in DataNodes)
                     {
-                        Ressource res = new Ressource()
+                        DofusItem.DofusItem dofus_item = new DofusItem.DofusItem()
                         {
-                            Label = GetRessourceLabel(node),
-                            Description = GetRessourceDescription(node),
-                            Level = GetRessourceLevel(node),
-                            Effects = GetRessourceEffects(node)
+                            Label = GetItemLabel(node),
+                            Description = GetItemDescription(node),
+                            Level = GetItemLevel(node),
+                            Effects = GetItemEffects(node)
                         };
-                        logger.LogRessource(res, file, node.Line);
+                        logger.LogRessource(dofus_item, file, node.Line);
 
-                        if (!res.HasError)
+                        if (!dofus_item.HasError)
                         {
-                            DisplayRessource(res);
+                            DisplayItem(dofus_item);
                             success_count++;
                         }
                         total_count++;
                     }
                 }
+
             }
             Console.WriteLine($"{success_count} elements imported.");
             Console.WriteLine($"{(total_count - success_count)} elements NOT imported due to errors. (see '/Downloads/squidspy_log.txt')");
             logger.EndLogging();
         }
 
-        private HtmlNodeCollection SelectRessourceDataNodes(HtmlDocument doc)
+        private HtmlNodeCollection SelectItemDataNodes(HtmlDocument doc)
         {
             return doc.DocumentNode.SelectNodes("/html/body/div[@id=\"body\"]/div[@id=\"table\"]/div[@id=\"main\"]/div[position()>1]");
         }
 
-        private string GetRessourceLabel(HtmlNode node)
+        private string GetItemLabel(HtmlNode node)
         {
             string label = node.SelectSingleNode("div/table/tr/td/table/tr/td/div[1]")?.InnerText;
 
@@ -74,10 +72,10 @@ namespace squidspy.Core
                 label = node.SelectSingleNode(".//div/tr/td/table/tr/td/div[1]")?.InnerText;
             }
 
-            return label;
+            return WebUtility.HtmlDecode(label.Trim());
         }
 
-        private string GetRessourceLevel(HtmlNode node)
+        private string GetItemLevel(HtmlNode node)
         {
             string level = node.SelectSingleNode("div/table/tr/td/table/tr/td/div[3]")?.InnerText;
 
@@ -91,10 +89,10 @@ namespace squidspy.Core
                 level = node.SelectSingleNode(".//div/tr/td/table/tr/td/div[last()]")?.InnerText;
             }
 
-            return level;
+            return WebUtility.HtmlDecode(level.Trim());
         }
 
-        private string GetRessourceDescription(HtmlNode node)
+        private string GetItemDescription(HtmlNode node)
         {
             string desc = node.SelectSingleNode("div/table/tr/td/table/tr[5]")?.InnerText;
 
@@ -103,10 +101,10 @@ namespace squidspy.Core
                 desc = node.SelectSingleNode(".//div/tr/td/table/tr[5]")?.InnerText;
             }
 
-            return desc.Trim();
+            return WebUtility.HtmlDecode(desc.Trim());
         }
 
-        private List<string> GetRessourceEffects(HtmlNode node)
+        private List<string> GetItemEffects(HtmlNode node)
         {
             HtmlNodeCollection effectsNodes = node.SelectNodes("div/table/tr/td/table/tr/td/div/table/tr[position() != 1 and position() != last()]");
 
@@ -124,7 +122,7 @@ namespace squidspy.Core
 
             foreach (HtmlNode effectNode in effectsNodes)
             {
-                string cleanEffect = StringHelper.CleanString(effectNode.SelectSingleNode("td").InnerText);
+                string cleanEffect = WebUtility.HtmlDecode(effectNode.SelectSingleNode("td").InnerText.Trim());
 
                 if (!String.IsNullOrWhiteSpace(cleanEffect))
                 {
@@ -135,7 +133,7 @@ namespace squidspy.Core
             return effects;
         }
 
-        private void DisplayRessource(Ressource res)
+        private void DisplayItem(DofusItem.DofusItem res)
         {
             Console.WriteLine($"{res.Label} ({res.Level})");
             Console.WriteLine(res.Description);
@@ -148,10 +146,9 @@ namespace squidspy.Core
             Console.WriteLine();
         }
 
-        private void SaveRessource(Ressource res)
+        private void SaveItem(DofusItem.DofusItem res)
         {
             // INSERT Ressource INTO DATABASE
         }
-        #endregion
     }
 }

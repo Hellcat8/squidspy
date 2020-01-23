@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace squidspy.DofusItem
 {
-    public class Ressource
+    public class DofusItem
     {
         public string Label { get; set; }
         public string Description { get; set; }

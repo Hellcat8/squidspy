@@ -19,7 +19,7 @@ namespace squidspy.Core
 
         public static bool HasUnwantedString(string s)
         {
-            Regex reg = new Regex("/(&.+;)/ig");
+            Regex reg = new Regex("/(&.+;)");
 
             return reg.IsMatch(s);
         }

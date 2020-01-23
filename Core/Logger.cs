@@ -49,26 +49,26 @@ namespace squidspy.Core
             _logfile.WriteLine(_TOPBORDER);
         }
 
-        public void LogRessource(Ressource res, string path, int line)
+        public void LogRessource(DofusItem.DofusItem dofus_item, string path, int line)
         {
             string propError = String.Empty;
 
-            if (String.IsNullOrEmpty(res.Label) || StringHelper.HasUnwantedString(res.Label))
+            if (String.IsNullOrEmpty(dofus_item.Label) || StringHelper.HasUnwantedString(dofus_item.Label))
             {
                 propError = "LABEL";
             }
 
-            if (String.IsNullOrEmpty(res.Level) || StringHelper.HasUnwantedString(res.Level))
+            if (String.IsNullOrEmpty(dofus_item.Level) || StringHelper.HasUnwantedString(dofus_item.Level))
             {
                 propError = "LEVEL";
             }
 
-            if (String.IsNullOrEmpty(res.Description) || StringHelper.HasUnwantedString(res.Description))
+            if (String.IsNullOrEmpty(dofus_item.Description) || StringHelper.HasUnwantedString(dofus_item.Description))
             {
                 propError = "DESCRIPTION";
             }
 
-            foreach (string effect in res.Effects)
+            foreach (string effect in dofus_item.Effects)
             {
                 if (String.IsNullOrEmpty(effect) || StringHelper.HasUnwantedString(effect))
                 {
@@ -79,26 +79,26 @@ namespace squidspy.Core
 
             string reason;
 
-            if (HasDataError(res.Description, out reason))
+            if (HasDataError(dofus_item.Description, out reason))
             {
                 propError = "EXCLUDED";
             }
 
             if (!String.IsNullOrEmpty(propError))
             {
-                res.HasError = true;
+                dofus_item.HasError = true;
                 _countRessourcesErrors++;
                 _logfile.WriteLine(_SUBBORDER);
                 _logfile.WriteLine($"Error : {propError}.");
                 if (propError == "EXCLUDED") { _logfile.WriteLine($"Reason : {reason}."); }
                 _logfile.WriteLine($"File : {path}.");
                 _logfile.WriteLine($"Line : {line}.");
-                _logfile.WriteLine($"Label : {res.Label}");
-                _logfile.WriteLine($"Level : {res.Level}");
-                _logfile.WriteLine($"Description : {res.Description}");
-                _logfile.WriteLine($"Effects : " + (res.Effects.Count > 0 ? "" : "None."));
+                _logfile.WriteLine($"Label : {dofus_item.Label}");
+                _logfile.WriteLine($"Level : {dofus_item.Level}");
+                _logfile.WriteLine($"Description : {dofus_item.Description}");
+                _logfile.WriteLine($"Effects : " + (dofus_item.Effects.Count > 0 ? "" : "None."));
 
-                foreach (string effect in res.Effects)
+                foreach (string effect in dofus_item.Effects)
                 {
                     _logfile.WriteLine($"\t{effect}");
                 }

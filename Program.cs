@@ -7,6 +7,7 @@ namespace squidspy
     class Program
     {
         const string _RESSOURCESDIR = "/Users/amine/Downloads/Dofus Retro HTML files - Internet Archive/ressources/";
+        const string _EQUIPEMENTDIR = "/Users/amine/Downloads/Dofus Retro HTML files - Internet Archive/equipement/";
 
         static void Main(string[] args)
         {
@@ -15,7 +16,7 @@ namespace squidspy
 
             Spy spy = new Spy();
 
-            spy.ImportRessources(_RESSOURCESDIR);
+            spy.ImportItem(_RESSOURCESDIR, "potion");
         }
     }
 }
