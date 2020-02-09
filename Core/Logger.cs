@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using squidspy.DofusItem;
 
@@ -49,7 +50,7 @@ namespace squidspy.Core
             _logfile.WriteLine(_TOPBORDER);
         }
 
-        public void LogRessource(DofusItem.DofusItem dofus_item, string path, int line)
+        public void LogItem(DofusItem.DofusItem dofus_item, string path, int line)
         {
             string propError = String.Empty;
 
@@ -58,7 +59,7 @@ namespace squidspy.Core
                 propError = "LABEL";
             }
 
-            if (String.IsNullOrEmpty(dofus_item.Level) || StringHelper.HasUnwantedString(dofus_item.Level))
+            if (dofus_item.Level == 0)
             {
                 propError = "LEVEL";
             }
@@ -77,11 +78,28 @@ namespace squidspy.Core
                 }
             }
 
+            if (dofus_item.Conditions != null && dofus_item.Conditions.Count > 0)
+            {
+                foreach (string condition in dofus_item.Conditions)
+                {
+                    if (String.IsNullOrEmpty(condition) || StringHelper.HasBadCondition(condition))
+                    {
+                        propError = "CONDITION";
+                        break;
+                    }
+                }
+            }
+
             string reason;
 
             if (HasDataError(dofus_item.Description, out reason))
             {
                 propError = "EXCLUDED";
+            }
+
+            if (NeedsVerification(dofus_item.Label) || Verify(dofus_item))
+            {
+                propError = "NEEDS VERIFICATION";
             }
 
             if (!String.IsNullOrEmpty(propError))
@@ -102,10 +120,31 @@ namespace squidspy.Core
                 {
                     _logfile.WriteLine($"\t{effect}");
                 }
+
+                if (dofus_item.Conditions != null && dofus_item.Conditions.Count > 0)
+                {
+                    _logfile.WriteLine($"Conditions :");
+                    foreach (string c in dofus_item.Conditions)
+                    {
+                        _logfile.WriteLine($"\t{c}");
+                    }
+                }
                 
                 _logfile.WriteLine(_BOTBORDER); 
                 _logfile.WriteLine(_logfile.NewLine);
             }
+        }
+
+        public void LogCategories(List<string> categories)
+        {
+            _logfile.WriteLine(_SUBBORDER);
+            _logfile.WriteLine("CATEGORIES :");
+
+            foreach (string s in categories)
+            {
+                _logfile.WriteLine(s);
+            }
+            _logfile.WriteLine(_SUBBORDER);
         }
 
         public void EndLogging()
@@ -124,6 +163,35 @@ namespace squidspy.Core
                 return true;
             }
             reason = String.Empty;
+            return false;
+        }
+
+        public bool NeedsVerification(string label)
+        {
+            List<string> items = new List<string>()
+            {
+                "le nom de l'item a check"
+            };
+
+            foreach (string s in items)
+            {
+                if (label.Equals(s))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public bool Verify(DofusItem.DofusItem di)
+        {
+            foreach (string eff in di.Effects)
+            {
+                if (eff.ToLower().Contains("cequejeveux"))
+                {
+                    return true;
+                }
+            }
             return false;
         }
     }

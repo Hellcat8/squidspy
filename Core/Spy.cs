@@ -3,11 +3,24 @@ using System.Collections.Generic;
 using System.IO;
 using HtmlAgilityPack;
 using System.Net;
+using squidspy.Models;
+using System.Collections;
+using System.Linq;
+using squidspy.DbInjector;
 
 namespace squidspy.Core
 {
     public class Spy
     {
+        public enum ItemTypes {
+            ressource,
+            equipement,
+            arme,
+            familier,
+            panoplie,
+            consommable
+        };
+
         public Spy() {}
 
         private HtmlDocument OpenHtmlFromFile(string path)
@@ -18,15 +31,21 @@ namespace squidspy.Core
             return doc;
         }
 
-        public void ImportItem(string path, string item_type)
+        public void ImportItems(string path, string item_type)
         {
             Logger logger = new Logger();
             logger.StartLogging(item_type);
             int success_count = 0;
             int total_count = 0;
+            List<string> categories = new List<string>();
+            List<Ressource> ressources = new List<Ressource>();
+            List<Equipement> equipements = new List<Equipement>();
+            List<Arme> armes = new List<Arme>();
 
             foreach (string dir in Directory.GetDirectories(path))
             {
+                string cat = new DirectoryInfo(dir).Name;
+                categories.Add(cat);
                 foreach (string file in Directory.GetFiles(dir, "*.html"))
                 {
                     HtmlDocument doc = this.OpenHtmlFromFile(file);
@@ -41,20 +60,73 @@ namespace squidspy.Core
                             Level = GetItemLevel(node),
                             Effects = GetItemEffects(node)
                         };
-                        logger.LogRessource(dofus_item, file, node.Line);
+
+                        if (item_type == ItemTypes.equipement.ToString() || item_type == ItemTypes.arme.ToString())
+                        {
+                            dofus_item.Conditions = GetItemConditions(node);
+
+                            if (item_type == ItemTypes.arme.ToString())
+                            {
+                                // Assigner Caractéristique
+                            }
+                        }
+                        logger.LogItem(dofus_item, file, node.Line);
 
                         if (!dofus_item.HasError)
                         {
+                            if (item_type == ItemTypes.ressource.ToString())
+                            {
+                                Ressource res = new Ressource();
+                                res.Description = dofus_item.Description;
+                                res.Label = dofus_item.Label;
+                                res.Level = dofus_item.Level;
+                                res.RessourceEffect = GetRessourceEffects(dofus_item.Effects);
+                                res.TypeRessourceName = cat;
+
+                                ressources.Add(res);
+                            }
+                            else if (item_type == ItemTypes.equipement.ToString())
+                            {
+                                Equipement eq = new Equipement();
+                                // Equipement
+                                eq.Label = dofus_item.Label;
+                                eq.Description = dofus_item.Description;
+                                eq.Level = dofus_item.Level;
+                                eq.TypeEquipementName = cat;
+
+                                // Equipement Effects
+                                eq.EffectsList = dofus_item.Effects;
+
+                                // Equipement Condition
+                                eq.ConditionsList = dofus_item.Conditions;
+
+                                equipements.Add(eq);
+                            }
                             DisplayItem(dofus_item);
                             success_count++;
                         }
                         total_count++;
                     }
                 }
-
             }
+
+            Injector i = new Injector();
+
+            if (item_type == ItemTypes.ressource.ToString())
+            {
+                i.InjectRessources(ressources, categories);
+            }
+            else if (item_type == ItemTypes.equipement.ToString())
+            {
+                i.InjectEquipements(equipements, categories);
+            }
+
             Console.WriteLine($"{success_count} elements imported.");
             Console.WriteLine($"{(total_count - success_count)} elements NOT imported due to errors. (see '/Downloads/squidspy_log.txt')");
+            Console.WriteLine();
+
+            logger.LogCategories(categories);
+
             logger.EndLogging();
         }
 
@@ -75,7 +147,7 @@ namespace squidspy.Core
             return WebUtility.HtmlDecode(label.Trim());
         }
 
-        private string GetItemLevel(HtmlNode node)
+        private int GetItemLevel(HtmlNode node)
         {
             string level = node.SelectSingleNode("div/table/tr/td/table/tr/td/div[3]")?.InnerText;
 
@@ -89,7 +161,10 @@ namespace squidspy.Core
                 level = node.SelectSingleNode(".//div/tr/td/table/tr/td/div[last()]")?.InnerText;
             }
 
-            return WebUtility.HtmlDecode(level.Trim());
+            int returnValue;
+            Int32.TryParse(StringHelper.CleanLevelString(WebUtility.HtmlDecode(level.Trim())), out returnValue);
+
+            return returnValue;
         }
 
         private string GetItemDescription(HtmlNode node)
@@ -106,11 +181,11 @@ namespace squidspy.Core
 
         private List<string> GetItemEffects(HtmlNode node)
         {
-            HtmlNodeCollection effectsNodes = node.SelectNodes("div/table/tr/td/table/tr/td/div/table/tr[position() != 1 and position() != last()]");
+            HtmlNodeCollection effectsNodes = node.SelectNodes("div/table/tr/td/table/tr/td/div[1]/table/tr[position() != 1 and position() != last()]");
 
             if (effectsNodes == null || effectsNodes.Count == 0)
             {
-                effectsNodes = node.SelectNodes(".//div/tr/td/table/tr/td/div/table/tr[position() != 1 and position() != last()]");
+                effectsNodes = node.SelectNodes(".//div/tr/td/table/tr/td/div[1]/table/tr[position() != 1 and position() != last()]");
             }
 
             if (effectsNodes == null || effectsNodes.Count == 0)
@@ -133,6 +208,60 @@ namespace squidspy.Core
             return effects;
         }
 
+        private List<string> GetItemConditions(HtmlNode node)
+        {
+            HtmlNodeCollection ConditionsNodes = node.SelectNodes("div/table/tr/td/table/tr/td/div[2]/table/tr[position() != 1 and position() != last()]");
+
+            if (ConditionsNodes == null || ConditionsNodes.Count == 0)
+            {
+                ConditionsNodes = node.SelectNodes(".//div/tr/td/table/tr/td/div[2]/table/tr[position() != 1 and position() != last()]");
+            }
+
+            if (ConditionsNodes == null || ConditionsNodes.Count == 0)
+            {
+                return new List<string>();
+            }
+
+            List<string> conditions = new List<string>();
+
+            foreach (HtmlNode conditionNode in ConditionsNodes)
+            {
+                string cleanCondition = WebUtility.HtmlDecode(conditionNode.SelectSingleNode("td").InnerText.Trim());
+
+                if (StringHelper.HasBadCondition(cleanCondition))
+                {
+                    cleanCondition = StringHelper.CleanCondition(cleanCondition);
+                }
+
+                if (!String.IsNullOrWhiteSpace(cleanCondition))
+                {
+                    conditions.Add(cleanCondition);
+                }
+            }
+
+            return conditions;
+        }
+
+        private ICollection<RessourceEffect> GetRessourceEffects(List<string> effects)
+        {
+            if (effects.Any())
+            {
+                List<RessourceEffect> reList = new List<RessourceEffect>();
+                int count = 1;
+                foreach (string eff in effects)
+                {
+                    RessourceEffect re = new RessourceEffect();
+                    re.Effect = eff;
+                    re.Order = count;
+                    count++;
+
+                    reList.Add(re);
+                }
+                return reList;
+            }
+            return new List<RessourceEffect>();
+        }
+
         private void DisplayItem(DofusItem.DofusItem res)
         {
             Console.WriteLine($"{res.Label} ({res.Level})");
@@ -142,13 +271,21 @@ namespace squidspy.Core
             {
                 Console.WriteLine($"Effet : {effect}");
             }
+
+            if (res.Conditions != null)
+            {
+                if (res.Conditions.Any())
+                {
+                    Console.WriteLine("-");
+                    foreach (string cdt in res.Conditions)
+                    {
+                        Console.WriteLine($"Condition : {cdt}");
+                    }
+                }
+            }
+
             Console.WriteLine("--");
             Console.WriteLine();
-        }
-
-        private void SaveItem(DofusItem.DofusItem res)
-        {
-            // INSERT Ressource INTO DATABASE
         }
     }
 }

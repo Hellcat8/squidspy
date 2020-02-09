@@ -11,12 +11,17 @@ namespace squidspy
 
         static void Main(string[] args)
         {
-            //string path = "/Users/amine/Downloads/Dofus Retro HTML files - Internet Archive/ressources/potion de forgemagie/";
-            //string path = "/Users/amine/Downloads/potion_1.html";
+            try
+            {
+                Spy spy = new Spy();
+                string item_type = Spy.ItemTypes.equipement.ToString();
 
-            Spy spy = new Spy();
-
-            spy.ImportItem(_RESSOURCESDIR, "potion");
+                spy.ImportItems(_EQUIPEMENTDIR, item_type);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
     }
 }
